@@ -110,3 +110,17 @@ export async function setupRichMenu(): Promise<void> {
     console.error('Failed to setup Rich Menu:', err);
   }
 }
+
+export async function relinkRegisteredUsers(userIds: string[]): Promise<void> {
+  if (!registeredMenuId || userIds.length === 0) return;
+  let linked = 0;
+  for (const userId of userIds) {
+    try {
+      await client.linkRichMenuIdToUser(userId, registeredMenuId);
+      linked++;
+    } catch (err) {
+      console.error(`Failed to link Rich Menu to user ${userId}:`, err instanceof Error ? err.message : err);
+    }
+  }
+  console.log(`Re-linked ${linked}/${userIds.length} registered users to Rich Menu`);
+}

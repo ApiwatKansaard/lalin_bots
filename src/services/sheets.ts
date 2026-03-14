@@ -221,6 +221,19 @@ export async function findPaymentByHouseMonthYear(
   };
 }
 
+export async function getAllRegisteredLineUserIds(): Promise<string[]> {
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: 'houses!A2:F',
+  });
+  const rows = res.data.values;
+  if (!rows) return [];
+
+  return rows
+    .filter((r) => r[2] && r[2].startsWith('U') && r[5] !== 'FALSE')
+    .map((r) => r[2]);
+}
+
 export async function getUnpaidMonths(
   houseNumber: string,
   moveInDate: string,

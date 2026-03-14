@@ -2,9 +2,15 @@ import express from 'express';
 import { middleware, MiddlewareConfig } from '@line/bot-sdk';
 import { config } from './config';
 import { handleWebhook } from './line/webhook';
-import { setupRichMenu } from './line/richmenu';
+import { setupRichMenu, relinkRegisteredUsers } from './line/richmenu';
+import { getAllRegisteredLineUserIds } from './services/sheets';
 
 const app = express();
+
+// Root route
+app.get('/', (_req, res) => {
+  res.json({ status: 'ok', service: 'Lalin Village Bot' });
+});
 
 // Health check (before LINE middleware so it doesn't require signature)
 app.get('/health', (_req, res) => {
@@ -34,4 +40,12 @@ app.listen(config.port, async () => {
 
   // Setup Rich Menu on startup
   await setupRichMenu();
+
+  // Re-link registered users to the new Rich Menu
+  try {
+    const registeredUsers = await getAllRegisteredLineUserIds();
+    await relinkRegisteredUsers(registeredUsers);
+  } catch (err) {
+    console.error('Failed to re-link registered users:', err);
+  }
 });
