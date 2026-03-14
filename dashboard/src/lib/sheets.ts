@@ -17,7 +17,16 @@ function getSheets(): sheets_v4.Sheets {
 function getSpreadsheetId(): string {
   return process.env.GOOGLE_SHEETS_ID!;
 }
+// Buddhist Era (พ.ศ.) ↔ Common Era (ค.ศ.) conversion
+function toCE(year: string): string {
+  const y = parseInt(year);
+  return !isNaN(y) && y > 2400 ? (y - 543).toString() : year;
+}
 
+function toBE(year: string): string {
+  const y = parseInt(year);
+  return !isNaN(y) && y < 2400 ? (y + 543).toString() : year;
+}
 // ── Types ──────────────────────────────────────────────
 
 export interface PaymentRecord {
@@ -180,7 +189,7 @@ export async function getAllPayments(): Promise<PaymentRecord[]> {
     house_number: row[0] || "",
     resident_name: row[1] || "",
     month: row[2] || "",
-    year: row[3] || "",
+    year: toCE(row[3] || ""),
     amount: row[4] || "",
     paid_date: row[5] || "",
     transaction_ref: row[6] || "",
@@ -201,7 +210,7 @@ export async function addPaymentRecord(record: Omit<PaymentRecord, "rowIndex">):
         record.house_number,
         record.resident_name,
         record.month,
-        record.year,
+        toBE(record.year),
         record.amount,
         record.paid_date,
         record.transaction_ref,
@@ -302,7 +311,9 @@ function parseDateStringDash(dateStr: string): Date | null {
   // DD/MM/YYYY
   const slashMatch = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if (slashMatch) {
-    return new Date(parseInt(slashMatch[3]), parseInt(slashMatch[2]) - 1, parseInt(slashMatch[1]));
+    let year = parseInt(slashMatch[3]);
+    if (year > 2400) year -= 543; // Convert BE to CE
+    return new Date(year, parseInt(slashMatch[2]) - 1, parseInt(slashMatch[1]));
   }
   // YYYY-MM-DD
   const d = new Date(dateStr);

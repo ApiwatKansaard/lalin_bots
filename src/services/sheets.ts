@@ -11,6 +11,17 @@ const auth = new google.auth.JWT({
 const sheets: sheets_v4.Sheets = google.sheets({ version: 'v4', auth });
 const spreadsheetId = config.google.sheetsId;
 
+// Buddhist Era (พ.ศ.) ↔ Common Era (ค.ศ.) conversion
+function toCE(year: string): string {
+  const y = parseInt(year);
+  return !isNaN(y) && y > 2400 ? (y - 543).toString() : year;
+}
+
+function toBE(year: string): string {
+  const y = parseInt(year);
+  return !isNaN(y) && y < 2400 ? (y + 543).toString() : year;
+}
+
 export async function getSettings(): Promise<VillageSettings> {
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId,
@@ -61,7 +72,7 @@ export async function addPaymentRecord(record: PaymentRecord): Promise<void> {
         record.house_number,
         record.resident_name,
         record.month,
-        record.year,
+        toBE(record.year),
         record.amount,
         record.paid_date,
         record.transaction_ref,
@@ -89,7 +100,7 @@ export async function findPaymentByTransactionRef(ref: string): Promise<PaymentR
     house_number: row[0],
     resident_name: row[1],
     month: row[2],
-    year: row[3],
+    year: toCE(row[3]),
     amount: row[4],
     paid_date: row[5],
     transaction_ref: row[6],
@@ -114,7 +125,7 @@ export async function getPaymentHistory(houseNumber: string): Promise<PaymentRec
       house_number: row[0],
       resident_name: row[1],
       month: row[2],
-      year: row[3],
+      year: toCE(row[3]),
       amount: row[4],
       paid_date: row[5],
       transaction_ref: row[6],
@@ -167,7 +178,9 @@ function parseDateString(dateStr: string): Date {
   // Handle DD/MM/YYYY (Thai format from CSV)
   const ddmmyyyy = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if (ddmmyyyy) {
-    return new Date(parseInt(ddmmyyyy[3]), parseInt(ddmmyyyy[2]) - 1, parseInt(ddmmyyyy[1]));
+    let year = parseInt(ddmmyyyy[3]);
+    if (year > 2400) year -= 543; // Convert BE to CE
+    return new Date(year, parseInt(ddmmyyyy[2]) - 1, parseInt(ddmmyyyy[1]));
   }
   // Fallback to standard Date parsing (YYYY-MM-DD etc.)
   return new Date(dateStr);
@@ -234,14 +247,15 @@ export async function findPaymentByHouseMonthYear(
   const rows = res.data.values;
   if (!rows) return null;
 
-  const row = rows.find((r) => r[0] === houseNumber && r[2] === month && r[3] === year && r[8] === 'verified');
+  const beYear = toBE(year);
+  const row = rows.find((r) => r[0] === houseNumber && r[2] === month && r[3] === beYear && r[8] === 'verified');
   if (!row) return null;
 
   return {
     house_number: row[0],
     resident_name: row[1],
     month: row[2],
-    year: row[3],
+    year: toCE(row[3]),
     amount: row[4],
     paid_date: row[5],
     transaction_ref: row[6],
