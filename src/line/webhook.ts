@@ -283,17 +283,7 @@ async function handleTextMessage(event: MessageEvent, userId: string): Promise<v
       return;
     }
 
-    const house = await findHouseByLineUserId(userId);
-    if (!house) {
-      await client.pushMessage({
-        to: userId,
-        messages: [buildErrorMessage('ไม่พบข้อมูลบ้านของคุณในระบบ กรุณากดปุ่ม "ลงทะเบียนบ้าน" ในเมนูด้านล่างเพื่อลงทะเบียนค่ะ')],
-      });
-      return;
-    }
-
-    const settings = await getSettings();
-
+    // "ส่งสลิป" doesn't need house lookup or settings — respond immediately
     if (text === 'ส่งสลิป') {
       await client.pushMessage({
         to: userId,
@@ -302,7 +292,27 @@ async function handleTextMessage(event: MessageEvent, userId: string): Promise<v
       return;
     }
 
+    // "วิธีใช้งาน" doesn't need house lookup — respond immediately
+    if (/วิธีใช้งาน|ช่วยเหลือ|help/.test(text)) {
+      await client.pushMessage({
+        to: userId,
+        messages: [buildHelpMessage()],
+      });
+      return;
+    }
+
+    // All remaining commands need house data
+    const house = await findHouseByLineUserId(userId);
+    if (!house) {
+      await client.pushMessage({
+        to: userId,
+        messages: [buildErrorMessage('ไม่พบข้อมูลบ้านของคุณในระบบ กรุณากดปุ่ม "ลงทะเบียน" ในเมนูด้านล่างเพื่อลงทะเบียนค่ะ')],
+      });
+      return;
+    }
+
     if (/เช็คยอด|ยอดค้าง|ค้างชำระ/.test(text)) {
+      const settings = await getSettings();
       const balance = await getOutstandingBalance(house.house_number, house.move_in_date, settings.monthly_fee_amount);
       const msg = buildOutstandingBalance(
         settings.village_name,
@@ -316,6 +326,7 @@ async function handleTextMessage(event: MessageEvent, userId: string): Promise<v
     }
 
     if (/ประวัติ|การจ่าย|history/.test(text)) {
+      const settings = await getSettings();
       const payments = await getPaymentHistory(house.house_number);
       const msg = buildPaymentHistory(payments, settings.village_name);
       await client.pushMessage({ to: userId, messages: [msg as unknown as Message] });
@@ -343,21 +354,14 @@ async function handleTextMessage(event: MessageEvent, userId: string): Promise<v
       return;
     }
 
-    if (/วิธีใช้งาน|ช่วยเหลือ|help/.test(text)) {
-      await client.pushMessage({
-        to: userId,
-        messages: [buildHelpMessage()],
-      });
-      return;
-    }
-
     // Unrecognized
     await client.pushMessage({
       to: userId,
       messages: [buildHelpMessage()],
     });
   } catch (err) {
-    console.error('Error processing text:', err);
+    const errMsg = err instanceof Error ? err.message : String(err);
+    console.error('Error processing text:', errMsg, err);
     await client.pushMessage({
       to: userId,
       messages: [buildErrorMessage('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง')],
