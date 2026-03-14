@@ -169,10 +169,10 @@ export function buildPaymentHistory(
   const recent = payments.slice(0, 10);
 
   const bubbles = recent.map((p) => ({
-    type: 'bubble',
+    type: 'bubble' as const,
     body: {
-      type: 'box',
-      layout: 'vertical',
+      type: 'box' as const,
+      layout: 'vertical' as const,
       contents: [
         { type: 'text', text: `${villageName}`, weight: 'bold', size: 'sm', color: '#1DB446' },
         { type: 'text', text: `ประจำเดือน ${p.month}/${p.year}`, weight: 'bold', size: 'lg' },
@@ -201,7 +201,7 @@ export function buildPaymentHistory(
         },
       ],
     },
-  }));
+  } as FlexBubble));
 
   const carousel: FlexCarousel = {
     type: 'carousel',
