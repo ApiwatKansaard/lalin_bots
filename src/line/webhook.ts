@@ -249,9 +249,12 @@ async function handleImageMessage(event: MessageEvent, userId: string): Promise<
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
     console.error('Error processing image:', errMsg, err);
+    const userMessage = errMsg.includes('429') || errMsg.includes('quota')
+      ? 'ระบบ AI ถูกใช้งานเกินโควต้าชั่วคราว กรุณารอสักครู่แล้วลองใหม่อีกครั้งค่ะ'
+      : `เกิดข้อผิดพลาดในการประมวลผลสลิป: ${errMsg}`;
     await client.pushMessage({
       to: userId,
-      messages: [buildErrorMessage(`เกิดข้อผิดพลาดในการประมวลผลสลิป: ${errMsg}`)],
+      messages: [buildErrorMessage(userMessage)],
     });
   }
 }

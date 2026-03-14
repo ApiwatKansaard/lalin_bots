@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, Part } from '@google/generative-ai';
 import { config } from '../config';
 import { SlipData, VerificationResult, VillageSettings } from '../types';
 import { findPaymentByTransactionRef } from './sheets';
@@ -26,7 +26,7 @@ export async function extractSlipData(imageBuffer: Buffer): Promise<SlipData | n
 
 ถ้าไม่สามารถอ่านข้อมูลสลิปได้ ให้ตอบ: {"error": "unreadable"}`;
 
-  const result = await model.generateContent([
+  const contentParts: (string | Part)[] = [
     { text: prompt },
     {
       inlineData: {
@@ -34,7 +34,21 @@ export async function extractSlipData(imageBuffer: Buffer): Promise<SlipData | n
         data: base64Image,
       },
     },
-  ]);
+  ];
+
+  // Retry once on rate limit (429)
+  let result;
+  try {
+    result = await model.generateContent(contentParts);
+  } catch (err: any) {
+    if (err?.message?.includes('429') || err?.status === 429) {
+      console.log('Gemini rate limited, retrying in 45s...');
+      await new Promise((resolve) => setTimeout(resolve, 45000));
+      result = await model.generateContent(contentParts);
+    } else {
+      throw err;
+    }
+  }
 
   const responseText = result.response.text().trim();
 

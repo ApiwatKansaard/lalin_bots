@@ -1,4 +1,5 @@
 import express from 'express';
+import http from 'http';
 import { middleware, MiddlewareConfig } from '@line/bot-sdk';
 import { config } from './config';
 import { handleWebhook } from './line/webhook';
@@ -6,11 +7,7 @@ import { setupRichMenu, relinkRegisteredUsers } from './line/richmenu';
 import { getAllRegisteredLineUserIds } from './services/sheets';
 
 const app = express();
-
-// Root route
-app.get('/', (_req, res) => {
-  res.json({ status: 'ok', service: 'Lalin Village Bot' });
-});
+const DASHBOARD_PORT = 3001;
 
 // Health check (before LINE middleware so it doesn't require signature)
 app.get('/health', (_req, res) => {
@@ -32,6 +29,27 @@ app.post('/webhook', middleware(middlewareConfig), async (req, res) => {
   } catch (err) {
     console.error('Webhook processing error:', err);
   }
+});
+
+// Proxy everything else to Next.js dashboard
+app.use((req, res) => {
+  const proxyReq = http.request(
+    {
+      hostname: '127.0.0.1',
+      port: DASHBOARD_PORT,
+      path: req.originalUrl,
+      method: req.method,
+      headers: req.headers,
+    },
+    (proxyRes) => {
+      res.writeHead(proxyRes.statusCode || 502, proxyRes.headers);
+      proxyRes.pipe(res, { end: true });
+    },
+  );
+  proxyReq.on('error', () => {
+    res.status(502).json({ error: 'Dashboard is starting up, please try again in a few seconds' });
+  });
+  req.pipe(proxyReq, { end: true });
 });
 
 app.listen(config.port, async () => {
