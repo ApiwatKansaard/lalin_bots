@@ -234,3 +234,143 @@ export function buildErrorMessage(reason: string): TextMessage {
     text: `❌ ${reason}`,
   };
 }
+
+export function buildWelcomeMessage(): TextMessage {
+  return {
+    type: 'text',
+    text: `🏘️ สวัสดีค่ะ ยินดีต้อนรับสู่ระบบค่าส่วนกลางหมู่บ้าน
+
+กรุณากดปุ่ม "ลงทะเบียนบ้าน" ด้านล่างเพื่อเริ่มต้นใช้งานค่ะ`,
+  };
+}
+
+export function buildRegistrationPrompt(): TextMessage {
+  return {
+    type: 'text',
+    text: `📝 กรุณาพิมพ์เลขบ้านของคุณ (เช่น 42)
+
+หรือพิมพ์ "ยกเลิก" เพื่อยกเลิกการลงทะเบียน`,
+  };
+}
+
+export function buildRegistrationSuccess(houseNumber: string, residentName: string): FlexMessage {
+  const bubble: FlexBubble = {
+    type: 'bubble',
+    header: {
+      type: 'box',
+      layout: 'vertical',
+      contents: [
+        { type: 'text', text: '✅ ลงทะเบียนสำเร็จ', weight: 'bold', size: 'lg', color: '#1DB446' },
+      ],
+    },
+    body: {
+      type: 'box',
+      layout: 'vertical',
+      contents: [
+        {
+          type: 'box',
+          layout: 'horizontal',
+          contents: [
+            { type: 'text', text: 'บ้านเลขที่', size: 'sm', color: '#555555', flex: 0 },
+            { type: 'text', text: houseNumber, size: 'sm', color: '#111111', align: 'end' },
+          ],
+        },
+        {
+          type: 'box',
+          layout: 'horizontal',
+          contents: [
+            { type: 'text', text: 'ชื่อ', size: 'sm', color: '#555555', flex: 0 },
+            { type: 'text', text: residentName, size: 'sm', color: '#111111', align: 'end' },
+          ],
+        },
+        { type: 'separator', margin: 'lg' },
+        {
+          type: 'text',
+          text: 'คุณสามารถใช้เมนูด้านล่างเพื่อส่งสลิป เช็คยอด หรือดูประวัติได้เลยค่ะ',
+          size: 'sm',
+          color: '#888888',
+          margin: 'lg',
+          wrap: true,
+        },
+      ],
+    },
+  };
+
+  return {
+    type: 'flex',
+    altText: `ลงทะเบียนสำเร็จ บ้านเลขที่ ${houseNumber}`,
+    contents: bubble,
+  };
+}
+
+export function buildRegistrationError(reason: string): TextMessage {
+  return {
+    type: 'text',
+    text: `❌ ${reason}`,
+  };
+}
+
+export function buildUnsupportedMessageType(): TextMessage {
+  return {
+    type: 'text',
+    text: 'ขออภัยค่ะ ระบบรองรับเฉพาะข้อความและรูปสลิปเท่านั้น',
+  };
+}
+
+export function buildMultiMonthConfirmation(
+  payments: PaymentRecord[],
+  settings: VillageSettings,
+): FlexMessage {
+  const monthItems = payments.map((p) => ({
+    type: 'box' as const,
+    layout: 'horizontal' as const,
+    contents: [
+      { type: 'text' as const, text: `${p.month}/${p.year}`, size: 'sm' as const, color: '#555555' },
+      { type: 'text' as const, text: `${p.amount} บาท`, size: 'sm' as const, color: '#1DB446', align: 'end' as const },
+    ],
+  }));
+
+  const bubble: FlexBubble = {
+    type: 'bubble',
+    header: {
+      type: 'box',
+      layout: 'vertical',
+      contents: [
+        { type: 'text', text: `🏘️ ${settings.village_name}`, weight: 'bold', size: 'lg', color: '#1DB446' },
+        { type: 'text', text: `ยืนยันการชำระค่าส่วนกลาง ${payments.length} เดือน`, size: 'sm', color: '#aaaaaa' },
+      ],
+    },
+    body: {
+      type: 'box',
+      layout: 'vertical',
+      contents: [
+        {
+          type: 'box',
+          layout: 'horizontal',
+          contents: [
+            { type: 'text', text: 'บ้านเลขที่', size: 'sm', color: '#555555', flex: 0 },
+            { type: 'text', text: payments[0].house_number, size: 'sm', color: '#111111', align: 'end' },
+          ],
+        },
+        { type: 'separator', margin: 'md' },
+        ...monthItems,
+        { type: 'separator', margin: 'lg' },
+        {
+          type: 'box',
+          layout: 'horizontal',
+          margin: 'lg',
+          contents: [
+            { type: 'text', text: 'สถานะ', size: 'md', weight: 'bold', color: '#555555', flex: 0 },
+            { type: 'text', text: '✅ ชำระแล้ว', size: 'md', weight: 'bold', color: '#1DB446', align: 'end' },
+          ],
+        },
+      ],
+    },
+  };
+
+  return {
+    type: 'flex',
+    altText: `ยืนยันการชำระค่าส่วนกลาง ${payments.length} เดือน บ้านเลขที่ ${payments[0].house_number}`,
+    contents: bubble,
+  };
+}

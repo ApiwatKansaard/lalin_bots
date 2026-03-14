@@ -41,4 +41,10 @@ export interface VerificationResult {
   valid: boolean;
   slip_data: SlipData | null;
   error_message: string | null;
+  monthCount: number;
+}
+
+export interface RegistrationState {
+  step: 'awaiting_house_number';
+  timestamp: number;
 }

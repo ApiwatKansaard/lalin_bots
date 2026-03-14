@@ -69,15 +69,28 @@ export async function verifySlip(
       valid: false,
       slip_data: slipData,
       error_message: 'สลิปมีความผิดปกติ กรุณาติดต่อกรรมการหมู่บ้าน',
+      monthCount: 0,
     };
   }
 
-  // Check amount
-  if (slipData.amount !== settings.monthly_fee_amount) {
+  // Check amount is a positive multiple of monthly fee
+  const monthlyFee = settings.monthly_fee_amount;
+  if (slipData.amount <= 0 || slipData.amount % monthlyFee !== 0) {
     return {
       valid: false,
       slip_data: slipData,
-      error_message: `จำนวนเงินไม่ตรงกับค่าส่วนกลาง (ยอดที่ต้องจ่าย: ${settings.monthly_fee_amount} บาท, ยอดที่โอน: ${slipData.amount} บาท)`,
+      error_message: `จำนวนเงินไม่ตรงกับค่าส่วนกลาง (ค่าส่วนกลางเดือนละ ${monthlyFee} บาท, ยอดที่โอน: ${slipData.amount} บาท)`,
+      monthCount: 0,
+    };
+  }
+
+  const monthCount = slipData.amount / monthlyFee;
+  if (monthCount > 12) {
+    return {
+      valid: false,
+      slip_data: slipData,
+      error_message: 'จำนวนเงินมากเกินไป กรุณาติดต่อกรรมการหมู่บ้าน',
+      monthCount: 0,
     };
   }
 
@@ -90,6 +103,7 @@ export async function verifySlip(
       valid: false,
       slip_data: slipData,
       error_message: `บัญชีปลายทางไม่ถูกต้อง กรุณาโอนเงินไปยังบัญชี ${settings.bank_name} ${settings.bank_account_number}`,
+      monthCount: 0,
     };
   }
 
@@ -100,6 +114,7 @@ export async function verifySlip(
       valid: false,
       slip_data: slipData,
       error_message: `สลิปนี้เคยถูกบันทึกแล้ว (ref: ${slipData.transaction_ref})`,
+      monthCount: 0,
     };
   }
 
@@ -107,5 +122,6 @@ export async function verifySlip(
     valid: true,
     slip_data: slipData,
     error_message: null,
+    monthCount,
   };
 }

@@ -147,3 +147,101 @@ export async function getOutstandingBalance(
     unpaidMonths,
   };
 }
+
+export async function findHouseByNumber(houseNumber: string): Promise<HouseRecord | null> {
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: 'houses!A2:F',
+  });
+  const rows = res.data.values;
+  if (!rows) return null;
+
+  const row = rows.find((r) => r[0] === houseNumber);
+  if (!row) return null;
+
+  return {
+    house_number: row[0],
+    resident_name: row[1],
+    line_user_id: row[2] || '',
+    phone: row[3] || '',
+    move_in_date: row[4] || '',
+    is_active: row[5] || 'TRUE',
+  };
+}
+
+export async function updateHouseLineUserId(houseNumber: string, lineUserId: string): Promise<void> {
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: 'houses!A2:F',
+  });
+  const rows = res.data.values;
+  if (!rows) throw new Error('Houses sheet is empty');
+
+  const rowIndex = rows.findIndex((r) => r[0] === houseNumber);
+  if (rowIndex === -1) throw new Error(`House ${houseNumber} not found`);
+
+  // Row index + 2 (1-based + header row)
+  const sheetRow = rowIndex + 2;
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `houses!C${sheetRow}`,
+    valueInputOption: 'USER_ENTERED',
+    requestBody: {
+      values: [[lineUserId]],
+    },
+  });
+}
+
+export async function findPaymentByHouseMonthYear(
+  houseNumber: string,
+  month: string,
+  year: string,
+): Promise<PaymentRecord | null> {
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: 'payments!A2:J',
+  });
+  const rows = res.data.values;
+  if (!rows) return null;
+
+  const row = rows.find((r) => r[0] === houseNumber && r[2] === month && r[3] === year && r[8] === 'verified');
+  if (!row) return null;
+
+  return {
+    house_number: row[0],
+    resident_name: row[1],
+    month: row[2],
+    year: row[3],
+    amount: row[4],
+    paid_date: row[5],
+    transaction_ref: row[6],
+    slip_image_url: row[7],
+    verified_status: row[8],
+    recorded_by: row[9],
+  };
+}
+
+export async function getUnpaidMonths(
+  houseNumber: string,
+  moveInDate: string,
+): Promise<{ month: string; year: string }[]> {
+  const payments = await getPaymentHistory(houseNumber);
+  const paidMonths = new Set(payments.filter(p => p.verified_status === 'verified').map((p) => `${p.year}-${p.month}`));
+
+  const start = new Date(moveInDate);
+  const now = new Date();
+  const unpaid: { month: string; year: string }[] = [];
+
+  const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+  while (cursor <= now) {
+    const y = cursor.getFullYear().toString();
+    const m = (cursor.getMonth() + 1).toString();
+    const key = `${y}-${m}`;
+    if (!paidMonths.has(key)) {
+      unpaid.push({ month: m, year: y });
+    }
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+
+  return unpaid;
+}
