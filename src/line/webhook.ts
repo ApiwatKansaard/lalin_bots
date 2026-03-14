@@ -247,10 +247,11 @@ async function handleImageMessage(event: MessageEvent, userId: string): Promise<
       });
     }
   } catch (err) {
-    console.error('Error processing image:', err);
+    const errMsg = err instanceof Error ? err.message : String(err);
+    console.error('Error processing image:', errMsg, err);
     await client.pushMessage({
       to: userId,
-      messages: [buildErrorMessage('เกิดข้อผิดพลาดในการประมวลผลสลิป กรุณาลองใหม่อีกครั้ง')],
+      messages: [buildErrorMessage(`เกิดข้อผิดพลาดในการประมวลผลสลิป: ${errMsg}`)],
     });
   }
 }
@@ -364,7 +365,7 @@ async function handleTextMessage(event: MessageEvent, userId: string): Promise<v
     console.error('Error processing text:', errMsg, err);
     await client.pushMessage({
       to: userId,
-      messages: [buildErrorMessage('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง')],
+      messages: [buildErrorMessage(`เกิดข้อผิดพลาด: ${errMsg}`)],
     });
   }
 }
