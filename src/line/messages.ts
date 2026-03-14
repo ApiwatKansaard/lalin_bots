@@ -168,7 +168,7 @@ export function buildPaymentHistory(
 
   const recent = payments.slice(0, 10);
 
-  const bubbles: FlexBubble[] = recent.map((p) => ({
+  const bubbles = recent.map((p) => ({
     type: 'bubble',
     body: {
       type: 'box',

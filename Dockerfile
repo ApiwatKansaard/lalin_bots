@@ -3,12 +3,13 @@ FROM node:20-slim
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm install
 
 COPY tsconfig.json ./
 COPY src/ ./src/
+COPY assets/ ./assets/
 
-RUN npm install -g typescript && tsc && npm uninstall -g typescript
+RUN npm run build
 
 EXPOSE 3000
 
