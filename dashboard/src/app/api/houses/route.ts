@@ -10,6 +10,7 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const houses = await getAllHouses();
+  houses.sort((a, b) => Number(a.house_number) - Number(b.house_number));
   return NextResponse.json(houses);
 }
 
