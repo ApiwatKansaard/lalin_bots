@@ -1,13 +1,22 @@
 import { google, sheets_v4 } from "googleapis";
 
-const auth = new google.auth.JWT({
-  email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL!,
-  key: process.env.GOOGLE_PRIVATE_KEY!.replace(/\\n/g, "\n"),
-  scopes: ["https://www.googleapis.com/auth/spreadsheets"],
-});
+let _sheets: sheets_v4.Sheets | null = null;
 
-const sheets: sheets_v4.Sheets = google.sheets({ version: "v4", auth });
-const spreadsheetId = process.env.GOOGLE_SHEETS_ID!;
+function getSheets(): sheets_v4.Sheets {
+  if (!_sheets) {
+    const auth = new google.auth.JWT({
+      email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL!,
+      key: (process.env.GOOGLE_PRIVATE_KEY || "").replace(/\\n/g, "\n"),
+      scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+    });
+    _sheets = google.sheets({ version: "v4", auth });
+  }
+  return _sheets;
+}
+
+function getSpreadsheetId(): string {
+  return process.env.GOOGLE_SHEETS_ID!;
+}
 
 // ── Types ──────────────────────────────────────────────
 
@@ -53,8 +62,8 @@ export interface AdminRecord {
 // ── Settings ───────────────────────────────────────────
 
 export async function getSettings(): Promise<VillageSettings> {
-  const res = await sheets.spreadsheets.values.get({
-    spreadsheetId,
+  const res = await getSheets().spreadsheets.values.get({
+    spreadsheetId: getSpreadsheetId(),
     range: "settings!A2:D2",
   });
   const row = res.data.values?.[0];
@@ -68,8 +77,8 @@ export async function getSettings(): Promise<VillageSettings> {
 }
 
 export async function updateSettings(settings: VillageSettings): Promise<void> {
-  await sheets.spreadsheets.values.update({
-    spreadsheetId,
+  await getSheets().spreadsheets.values.update({
+    spreadsheetId: getSpreadsheetId(),
     range: "settings!A2:D2",
     valueInputOption: "USER_ENTERED",
     requestBody: {
@@ -86,8 +95,8 @@ export async function updateSettings(settings: VillageSettings): Promise<void> {
 // ── Houses ─────────────────────────────────────────────
 
 export async function getAllHouses(): Promise<HouseRecord[]> {
-  const res = await sheets.spreadsheets.values.get({
-    spreadsheetId,
+  const res = await getSheets().spreadsheets.values.get({
+    spreadsheetId: getSpreadsheetId(),
     range: "houses!A2:F",
   });
   const rows = res.data.values;
@@ -104,8 +113,8 @@ export async function getAllHouses(): Promise<HouseRecord[]> {
 }
 
 export async function addHouse(house: Omit<HouseRecord, "rowIndex">): Promise<void> {
-  await sheets.spreadsheets.values.append({
-    spreadsheetId,
+  await getSheets().spreadsheets.values.append({
+    spreadsheetId: getSpreadsheetId(),
     range: "houses!A:F",
     valueInputOption: "USER_ENTERED",
     requestBody: {
@@ -122,8 +131,8 @@ export async function addHouse(house: Omit<HouseRecord, "rowIndex">): Promise<vo
 }
 
 export async function updateHouse(rowIndex: number, house: Omit<HouseRecord, "rowIndex">): Promise<void> {
-  await sheets.spreadsheets.values.update({
-    spreadsheetId,
+  await getSheets().spreadsheets.values.update({
+    spreadsheetId: getSpreadsheetId(),
     range: `houses!A${rowIndex}:F${rowIndex}`,
     valueInputOption: "USER_ENTERED",
     requestBody: {
@@ -142,8 +151,8 @@ export async function updateHouse(rowIndex: number, house: Omit<HouseRecord, "ro
 // ── Payments ───────────────────────────────────────────
 
 export async function getAllPayments(): Promise<PaymentRecord[]> {
-  const res = await sheets.spreadsheets.values.get({
-    spreadsheetId,
+  const res = await getSheets().spreadsheets.values.get({
+    spreadsheetId: getSpreadsheetId(),
     range: "payments!A2:J",
   });
   const rows = res.data.values;
@@ -164,8 +173,8 @@ export async function getAllPayments(): Promise<PaymentRecord[]> {
 }
 
 export async function addPaymentRecord(record: Omit<PaymentRecord, "rowIndex">): Promise<void> {
-  await sheets.spreadsheets.values.append({
-    spreadsheetId,
+  await getSheets().spreadsheets.values.append({
+    spreadsheetId: getSpreadsheetId(),
     range: "payments!A:J",
     valueInputOption: "USER_ENTERED",
     requestBody: {
@@ -186,8 +195,8 @@ export async function addPaymentRecord(record: Omit<PaymentRecord, "rowIndex">):
 }
 
 export async function updatePaymentStatus(rowIndex: number, status: string): Promise<void> {
-  await sheets.spreadsheets.values.update({
-    spreadsheetId,
+  await getSheets().spreadsheets.values.update({
+    spreadsheetId: getSpreadsheetId(),
     range: `payments!I${rowIndex}`,
     valueInputOption: "USER_ENTERED",
     requestBody: {
@@ -199,8 +208,8 @@ export async function updatePaymentStatus(rowIndex: number, status: string): Pro
 // ── Admins ─────────────────────────────────────────────
 
 export async function getAllAdmins(): Promise<AdminRecord[]> {
-  const res = await sheets.spreadsheets.values.get({
-    spreadsheetId,
+  const res = await getSheets().spreadsheets.values.get({
+    spreadsheetId: getSpreadsheetId(),
     range: "admins!A2:D",
   });
   const rows = res.data.values;
@@ -220,8 +229,8 @@ export async function findAdminByEmail(email: string): Promise<AdminRecord | nul
 }
 
 export async function addAdmin(email: string, role: string, addedBy: string): Promise<void> {
-  await sheets.spreadsheets.values.append({
-    spreadsheetId,
+  await getSheets().spreadsheets.values.append({
+    spreadsheetId: getSpreadsheetId(),
     range: "admins!A:D",
     valueInputOption: "USER_ENTERED",
     requestBody: {
@@ -232,14 +241,14 @@ export async function addAdmin(email: string, role: string, addedBy: string): Pr
 
 export async function removeAdmin(rowIndex: number): Promise<void> {
   // Get sheet ID for admins sheet
-  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
+  const spreadsheet = await getSheets().spreadsheets.get({ spreadsheetId: getSpreadsheetId() });
   const adminSheet = spreadsheet.data.sheets?.find(
     (s) => s.properties?.title === "admins"
   );
   if (!adminSheet?.properties?.sheetId && adminSheet?.properties?.sheetId !== 0) return;
 
-  await sheets.spreadsheets.batchUpdate({
-    spreadsheetId,
+  await getSheets().spreadsheets.batchUpdate({
+    spreadsheetId: getSpreadsheetId(),
     requestBody: {
       requests: [{
         deleteDimension: {
