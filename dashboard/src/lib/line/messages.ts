@@ -1,0 +1,215 @@
+import { FlexMessage, FlexBubble, FlexCarousel, TextMessage } from '@line/bot-sdk';
+
+interface PaymentData {
+  house_number: string;
+  resident_name: string;
+  month: string;
+  year: string;
+  amount: string;
+  paid_date: string;
+  transaction_ref: string;
+  verified_status: string;
+}
+
+interface SettingsData {
+  village_name: string;
+  monthly_fee_amount: number;
+  bank_account_number: string;
+  bank_name: string;
+}
+
+export function buildPaymentConfirmation(
+  payment: PaymentData,
+  settings: SettingsData,
+): FlexMessage {
+  const bubble: FlexBubble = {
+    type: 'bubble',
+    header: {
+      type: 'box',
+      layout: 'vertical',
+      contents: [
+        { type: 'text', text: `🏘️ ${settings.village_name}`, weight: 'bold', size: 'lg', color: '#1DB446' },
+        { type: 'text', text: 'ยืนยันการชำระค่าส่วนกลาง', size: 'sm', color: '#aaaaaa' },
+      ],
+    },
+    body: {
+      type: 'box',
+      layout: 'vertical',
+      contents: [
+        {
+          type: 'box', layout: 'horizontal', contents: [
+            { type: 'text', text: 'บ้านเลขที่', size: 'sm', color: '#555555', flex: 0 },
+            { type: 'text', text: payment.house_number, size: 'sm', color: '#111111', align: 'end' },
+          ],
+        },
+        {
+          type: 'box', layout: 'horizontal', contents: [
+            { type: 'text', text: 'ชื่อ', size: 'sm', color: '#555555', flex: 0 },
+            { type: 'text', text: payment.resident_name, size: 'sm', color: '#111111', align: 'end' },
+          ],
+        },
+        {
+          type: 'box', layout: 'horizontal', contents: [
+            { type: 'text', text: 'จำนวนเงิน', size: 'sm', color: '#555555', flex: 0 },
+            { type: 'text', text: `${payment.amount} บาท`, size: 'sm', color: '#111111', align: 'end' },
+          ],
+        },
+        {
+          type: 'box', layout: 'horizontal', contents: [
+            { type: 'text', text: 'วันที่จ่าย', size: 'sm', color: '#555555', flex: 0 },
+            { type: 'text', text: payment.paid_date, size: 'sm', color: '#111111', align: 'end' },
+          ],
+        },
+        {
+          type: 'box', layout: 'horizontal', contents: [
+            { type: 'text', text: 'ประจำเดือน', size: 'sm', color: '#555555', flex: 0 },
+            { type: 'text', text: `${payment.month}/${payment.year}`, size: 'sm', color: '#111111', align: 'end' },
+          ],
+        },
+        {
+          type: 'box', layout: 'horizontal', contents: [
+            { type: 'text', text: 'Ref', size: 'sm', color: '#555555', flex: 0 },
+            { type: 'text', text: payment.transaction_ref, size: 'sm', color: '#111111', align: 'end' },
+          ],
+        },
+        { type: 'separator', margin: 'lg' },
+        {
+          type: 'box', layout: 'horizontal', margin: 'lg', contents: [
+            { type: 'text', text: 'สถานะ', size: 'md', weight: 'bold', color: '#555555', flex: 0 },
+            { type: 'text', text: '✅ ชำระแล้ว', size: 'md', weight: 'bold', color: '#1DB446', align: 'end' },
+          ],
+        },
+      ],
+    },
+  };
+
+  return {
+    type: 'flex',
+    altText: `ยืนยันการชำระค่าส่วนกลาง บ้านเลขที่ ${payment.house_number}`,
+    contents: bubble,
+  };
+}
+
+export function buildOutstandingBalance(
+  villageName: string,
+  houseNumber: string,
+  totalOwed: number,
+  unpaidMonths: string[],
+  monthlyFee: number,
+): FlexMessage | TextMessage {
+  if (unpaidMonths.length === 0) {
+    return { type: 'text', text: 'คุณไม่มียอดค้างชำระ ✅' };
+  }
+
+  const monthItems = unpaidMonths.map((m) => ({
+    type: 'box' as const,
+    layout: 'horizontal' as const,
+    contents: [
+      { type: 'text' as const, text: m, size: 'sm' as const, color: '#555555' },
+      { type: 'text' as const, text: `${monthlyFee} บาท`, size: 'sm' as const, color: '#DD0000', align: 'end' as const },
+    ],
+  }));
+
+  const bubble: FlexBubble = {
+    type: 'bubble',
+    header: {
+      type: 'box',
+      layout: 'vertical',
+      contents: [
+        { type: 'text', text: `🏘️ ${villageName}`, weight: 'bold', size: 'lg', color: '#DD0000' },
+        { type: 'text', text: `บ้านเลขที่ ${houseNumber} — ยอดค้างชำระ`, size: 'sm', color: '#aaaaaa' },
+      ],
+    },
+    body: {
+      type: 'box',
+      layout: 'vertical',
+      contents: [
+        ...monthItems,
+        { type: 'separator', margin: 'lg' },
+        {
+          type: 'box', layout: 'horizontal', margin: 'lg', contents: [
+            { type: 'text', text: 'รวม', size: 'md', weight: 'bold', color: '#555555', flex: 0 },
+            { type: 'text', text: `${totalOwed} บาท`, size: 'md', weight: 'bold', color: '#DD0000', align: 'end' },
+          ],
+        },
+      ],
+    },
+  };
+
+  return {
+    type: 'flex',
+    altText: `ยอดค้างชำระ ${totalOwed} บาท (${unpaidMonths.length} เดือน)`,
+    contents: bubble,
+  };
+}
+
+export function buildPaymentHistory(
+  payments: PaymentData[],
+  villageName: string,
+): FlexMessage | TextMessage {
+  if (payments.length === 0) {
+    return { type: 'text', text: 'ยังไม่มีประวัติการชำระเงิน' };
+  }
+
+  const recent = payments.slice(0, 10);
+
+  const bubbles = recent.map((p) => ({
+    type: 'bubble' as const,
+    body: {
+      type: 'box' as const,
+      layout: 'vertical' as const,
+      contents: [
+        { type: 'text', text: villageName, weight: 'bold', size: 'sm', color: '#1DB446' },
+        { type: 'text', text: `ประจำเดือน ${p.month}/${p.year}`, weight: 'bold', size: 'lg' },
+        { type: 'separator', margin: 'md' },
+        {
+          type: 'box', layout: 'vertical', margin: 'md', contents: [
+            {
+              type: 'box', layout: 'horizontal', contents: [
+                { type: 'text', text: 'จำนวนเงิน', size: 'sm', color: '#555555', flex: 0 },
+                { type: 'text', text: `${p.amount} บาท`, size: 'sm', align: 'end' },
+              ],
+            },
+            {
+              type: 'box', layout: 'horizontal', contents: [
+                { type: 'text', text: 'วันที่จ่าย', size: 'sm', color: '#555555', flex: 0 },
+                { type: 'text', text: p.paid_date, size: 'sm', align: 'end' },
+              ],
+            },
+            {
+              type: 'box', layout: 'horizontal', contents: [
+                { type: 'text', text: 'สถานะ', size: 'sm', color: '#555555', flex: 0 },
+                { type: 'text', text: p.verified_status === 'verified' ? '✅' : '⏳', size: 'sm', align: 'end' },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  } as FlexBubble));
+
+  const carousel: FlexCarousel = { type: 'carousel', contents: bubbles };
+
+  return {
+    type: 'flex',
+    altText: `ประวัติการชำระเงิน ${recent.length} รายการ`,
+    contents: carousel,
+  };
+}
+
+export function buildHelpMessage(): TextMessage {
+  return {
+    type: 'text',
+    text: `📋 คำสั่งที่ใช้ได้:
+• ส่งรูปสลิป — บันทึกการชำระค่าส่วนกลาง
+• พิมพ์ "เช็คยอด" — ตรวจสอบยอดค้างชำระ
+• พิมพ์ "ประวัติ" — ดูประวัติการชำระเงิน
+• พิมพ์ "สถานะ" — เช็คสถานะเดือนปัจจุบัน
+
+หรือกดเมนูด้านล่างเพื่อเลือกคำสั่ง`,
+  };
+}
+
+export function buildErrorMessage(reason: string): TextMessage {
+  return { type: 'text', text: `❌ ${reason}` };
+}
