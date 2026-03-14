@@ -6,7 +6,7 @@ import { findPaymentByTransactionRef } from './sheets';
 const genAI = new GoogleGenerativeAI(config.gemini.apiKey);
 
 export async function extractSlipData(imageBuffer: Buffer): Promise<SlipData | null> {
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
   const base64Image = imageBuffer.toString('base64');
 
