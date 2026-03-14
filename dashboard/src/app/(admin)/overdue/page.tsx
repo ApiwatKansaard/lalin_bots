@@ -14,6 +14,8 @@ interface OverdueHouse {
   months_overdue: number;
   total_amount_owed: number;
   unpaid_months: string[];
+  monthly_rate: number;
+  prior_arrears_remaining: number;
 }
 
 export default function OverduePage() {
@@ -65,8 +67,10 @@ export default function OverduePage() {
               <TableRow>
                 <TableHead>บ้านเลขที่</TableHead>
                 <TableHead>ชื่อ</TableHead>
+                <TableHead>ค่า/เดือน</TableHead>
                 <TableHead>เดือนค้าง</TableHead>
-                <TableHead>ยอดค้าง</TableHead>
+                <TableHead>ค้างปีก่อน</TableHead>
+                <TableHead>ยอดรวม</TableHead>
                 <TableHead>เดือนที่ค้าง</TableHead>
                 <TableHead>แจ้งเตือน</TableHead>
               </TableRow>
@@ -79,10 +83,18 @@ export default function OverduePage() {
                 >
                   <TableCell className="font-medium">{h.house_number}</TableCell>
                   <TableCell>{h.resident_name}</TableCell>
+                  <TableCell>{h.monthly_rate.toLocaleString()} ฿</TableCell>
                   <TableCell>
                     <span className={cn("font-bold", h.months_overdue >= 3 ? "text-red-600" : "text-orange-600")}>
                       {h.months_overdue} เดือน
                     </span>
+                  </TableCell>
+                  <TableCell>
+                    {h.prior_arrears_remaining > 0 ? (
+                      <span className="font-medium text-red-600">{h.prior_arrears_remaining.toLocaleString()} ฿</span>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
                   </TableCell>
                   <TableCell className="font-medium">{h.total_amount_owed.toLocaleString()} ฿</TableCell>
                   <TableCell className="max-w-[200px] text-xs text-muted-foreground">
@@ -104,7 +116,7 @@ export default function OverduePage() {
               ))}
               {houses.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center text-muted-foreground">
                     ไม่มีบ้านค้างชำระ 🎉
                   </TableCell>
                 </TableRow>

@@ -8,7 +8,6 @@ import { Label } from "@/components/ui/label";
 import { Save, Bot, QrCode } from "lucide-react";
 
 interface Settings {
-  monthly_fee_amount: number;
   bank_account_number: string;
   bank_name: string;
   village_name: string;
@@ -52,10 +51,6 @@ export default function LineSettingsPage() {
             <div>
               <Label>ชื่อหมู่บ้าน</Label>
               <Input value={settings.village_name} onChange={(e) => setSettings({ ...settings, village_name: e.target.value })} />
-            </div>
-            <div>
-              <Label>ค่าส่วนกลางรายเดือน (บาท)</Label>
-              <Input type="number" value={settings.monthly_fee_amount} onChange={(e) => setSettings({ ...settings, monthly_fee_amount: parseFloat(e.target.value) })} />
             </div>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

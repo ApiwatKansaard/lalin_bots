@@ -13,7 +13,6 @@ interface PaymentData {
 
 interface SettingsData {
   village_name: string;
-  monthly_fee_amount: number;
   bank_account_number: string;
   bank_name: string;
 }

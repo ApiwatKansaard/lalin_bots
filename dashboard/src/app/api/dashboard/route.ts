@@ -30,7 +30,10 @@ export async function GET() {
   );
 
   const activeHouses = houses.filter((h) => h.is_active === "TRUE");
-  const targetThisMonth = activeHouses.length * settings.monthly_fee_amount;
+  const targetThisMonth = activeHouses.reduce(
+    (sum, h) => sum + (parseFloat(h.monthly_rate) || 0),
+    0
+  );
   const outstandingThisMonth = targetThisMonth - collectedThisMonth;
 
   // Last 12 months chart data
@@ -47,7 +50,7 @@ export async function GET() {
     monthlyData.push({
       month: `${m}/${y}`,
       collected,
-      target: activeHouses.length * settings.monthly_fee_amount,
+      target: targetThisMonth,
     });
   }
 

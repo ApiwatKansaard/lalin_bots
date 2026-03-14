@@ -19,6 +19,11 @@ interface House {
   phone: string;
   move_in_date: string;
   is_active: string;
+  monthly_rate: string;
+  transfer_date: string;
+  due_date: string;
+  prior_arrears: string;
+  prior_arrears_paid: string;
 }
 
 export default function HousesPage() {
@@ -26,7 +31,7 @@ export default function HousesPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRow, setEditingRow] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<House | null>(null);
-  const [form, setForm] = useState({ house_number: "", resident_name: "", line_user_id: "", phone: "", move_in_date: "" });
+  const [form, setForm] = useState({ house_number: "", resident_name: "", line_user_id: "", phone: "", move_in_date: "", monthly_rate: "", due_date: "" });
 
   const fetchHouses = useCallback(async () => {
     const res = await fetch("/api/houses");
@@ -42,7 +47,7 @@ export default function HousesPage() {
       body: JSON.stringify({ action: "add", ...form }),
     });
     setDialogOpen(false);
-    setForm({ house_number: "", resident_name: "", line_user_id: "", phone: "", move_in_date: "" });
+    setForm({ house_number: "", resident_name: "", line_user_id: "", phone: "", move_in_date: "", monthly_rate: "", due_date: "" });
     fetchHouses();
   };
 
@@ -99,6 +104,10 @@ export default function HousesPage() {
                 <div><Label>เบอร์โทร</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
               </div>
               <div><Label>วันที่เข้าอยู่</Label><Input type="date" value={form.move_in_date} onChange={(e) => setForm({ ...form, move_in_date: e.target.value })} /></div>
+              <div className="grid grid-cols-2 gap-4">
+                <div><Label>ค่าส่วนกลาง/เดือน</Label><Input type="number" value={form.monthly_rate} onChange={(e) => setForm({ ...form, monthly_rate: e.target.value })} /></div>
+                <div><Label>วันครบกำหนดจ่าย</Label><Input type="date" value={form.due_date} onChange={(e) => setForm({ ...form, due_date: e.target.value })} /></div>
+              </div>
             </div>
             <DialogFooter>
               <Button onClick={addHouse}>บันทึก</Button>
@@ -118,7 +127,8 @@ export default function HousesPage() {
                 <TableHead>บ้านเลขที่</TableHead>
                 <TableHead>ชื่อผู้อยู่</TableHead>
                 <TableHead>เบอร์โทร</TableHead>
-                <TableHead>วันเข้าอยู่</TableHead>
+                <TableHead>ค่าส่วนกลาง</TableHead>
+                <TableHead>วันครบกำหนด</TableHead>
                 <TableHead>สถานะ</TableHead>
                 <TableHead>จัดการ</TableHead>
               </TableRow>
@@ -131,7 +141,8 @@ export default function HousesPage() {
                       <TableCell><Input className="h-8 w-20" value={editForm.house_number} onChange={(e) => setEditForm({ ...editForm, house_number: e.target.value })} /></TableCell>
                       <TableCell><Input className="h-8" value={editForm.resident_name} onChange={(e) => setEditForm({ ...editForm, resident_name: e.target.value })} /></TableCell>
                       <TableCell><Input className="h-8 w-28" value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} /></TableCell>
-                      <TableCell><Input className="h-8" type="date" value={editForm.move_in_date} onChange={(e) => setEditForm({ ...editForm, move_in_date: e.target.value })} /></TableCell>
+                      <TableCell><Input className="h-8 w-20" type="number" value={editForm.monthly_rate} onChange={(e) => setEditForm({ ...editForm, monthly_rate: e.target.value })} /></TableCell>
+                      <TableCell><Input className="h-8" type="date" value={editForm.due_date} onChange={(e) => setEditForm({ ...editForm, due_date: e.target.value })} /></TableCell>
                       <TableCell><Badge variant={editForm.is_active === "TRUE" ? "default" : "secondary"}>{editForm.is_active === "TRUE" ? "Active" : "Inactive"}</Badge></TableCell>
                       <TableCell className="flex gap-1">
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-green-600" onClick={saveEdit}><Save className="h-4 w-4" /></Button>
@@ -143,7 +154,8 @@ export default function HousesPage() {
                       <TableCell className="font-medium">{h.house_number}</TableCell>
                       <TableCell>{h.resident_name}</TableCell>
                       <TableCell>{h.phone}</TableCell>
-                      <TableCell>{h.move_in_date}</TableCell>
+                      <TableCell>{parseFloat(h.monthly_rate || "0").toLocaleString()} ฿</TableCell>
+                      <TableCell>{h.due_date}</TableCell>
                       <TableCell>
                         <Switch checked={h.is_active === "TRUE"} onCheckedChange={() => toggleActive(h)} />
                       </TableCell>

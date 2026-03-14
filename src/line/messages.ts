@@ -1,5 +1,5 @@
 import { FlexMessage, FlexBubble, FlexCarousel, TextMessage } from '@line/bot-sdk';
-import { PaymentRecord, VillageSettings } from '../types';
+import { HouseRecord, PaymentRecord, VillageSettings } from '../types';
 
 export function buildPaymentConfirmation(
   payment: PaymentRecord,
@@ -105,8 +105,9 @@ export function buildOutstandingBalance(
   totalOwed: number,
   unpaidMonths: string[],
   monthlyFee: number,
+  priorArrearsRemaining?: number,
 ): FlexMessage | TextMessage {
-  if (unpaidMonths.length === 0) {
+  if (unpaidMonths.length === 0 && (!priorArrearsRemaining || priorArrearsRemaining <= 0)) {
     return {
       type: 'text',
       text: 'คุณไม่มียอดค้างชำระ ✅',
@@ -122,6 +123,35 @@ export function buildOutstandingBalance(
     ],
   }));
 
+  const bodyContents: any[] = [...monthItems];
+
+  if (priorArrearsRemaining && priorArrearsRemaining > 0) {
+    bodyContents.push(
+      { type: 'separator', margin: 'md' },
+      {
+        type: 'box',
+        layout: 'horizontal',
+        contents: [
+          { type: 'text', text: 'ค้างจ่ายปีก่อน', size: 'sm', color: '#555555' },
+          { type: 'text', text: `${priorArrearsRemaining} บาท`, size: 'sm', color: '#DD0000', align: 'end' },
+        ],
+      },
+    );
+  }
+
+  bodyContents.push(
+    { type: 'separator', margin: 'lg' },
+    {
+      type: 'box',
+      layout: 'horizontal',
+      margin: 'lg',
+      contents: [
+        { type: 'text', text: 'รวม', size: 'md', weight: 'bold', color: '#555555', flex: 0 },
+        { type: 'text', text: `${totalOwed} บาท`, size: 'md', weight: 'bold', color: '#DD0000', align: 'end' },
+      ],
+    },
+  );
+
   const bubble: FlexBubble = {
     type: 'bubble',
     header: {
@@ -129,25 +159,13 @@ export function buildOutstandingBalance(
       layout: 'vertical',
       contents: [
         { type: 'text', text: `🏘️ ${villageName}`, weight: 'bold', size: 'lg', color: '#DD0000' },
-        { type: 'text', text: `บ้านเลขที่ ${houseNumber} — ยอดค้างชำระ`, size: 'sm', color: '#aaaaaa' },
+        { type: 'text', text: `บ้านเลขที่ ${houseNumber} — ยอดค้างชำระ (เดือนละ ${monthlyFee} บาท)`, size: 'sm', color: '#aaaaaa' },
       ],
     },
     body: {
       type: 'box',
       layout: 'vertical',
-      contents: [
-        ...monthItems,
-        { type: 'separator', margin: 'lg' },
-        {
-          type: 'box',
-          layout: 'horizontal',
-          margin: 'lg',
-          contents: [
-            { type: 'text', text: 'รวม', size: 'md', weight: 'bold', color: '#555555', flex: 0 },
-            { type: 'text', text: `${totalOwed} บาท`, size: 'md', weight: 'bold', color: '#DD0000', align: 'end' },
-          ],
-        },
-      ],
+      contents: bodyContents,
     },
   };
 
@@ -215,17 +233,21 @@ export function buildPaymentHistory(
   };
 }
 
-export function buildHelpMessage(): TextMessage {
-  return {
-    type: 'text',
-    text: `📋 คำสั่งที่ใช้ได้:
+export function buildHelpMessage(house?: HouseRecord): TextMessage {
+  let text = `📋 คำสั่งที่ใช้ได้:
 • ส่งรูปสลิป — บันทึกการชำระค่าส่วนกลาง
 • พิมพ์ "เช็คยอด" — ตรวจสอบยอดค้างชำระ
 • พิมพ์ "ประวัติ" — ดูประวัติการชำระเงิน
 • พิมพ์ "สถานะ" — เช็คสถานะเดือนปัจจุบัน
 
-หรือกดเมนูด้านล่างเพื่อเลือกคำสั่ง`,
-  };
+หรือกดเมนูด้านล่างเพื่อเลือกคำสั่ง`;
+
+  if (house) {
+    const rate = parseFloat(house.monthly_rate) || 0;
+    text += `\n\nค่าส่วนกลางบ้านเลขที่ ${house.house_number}: ${rate} บาท/เดือน`;
+  }
+
+  return { type: 'text', text };
 }
 
 export function buildErrorMessage(reason: string): TextMessage {
@@ -247,7 +269,7 @@ export function buildWelcomeMessage(): TextMessage {
 export function buildRegistrationPrompt(): TextMessage {
   return {
     type: 'text',
-    text: `📝 กรุณาพิมพ์เลขบ้านของคุณ (เช่น 42)
+    text: `📝 กรุณาพิมพ์เลขบ้านของคุณ (เช่น 8 หรือ 29/8)
 
 หรือพิมพ์ "ยกเลิก" เพื่อยกเลิกการลงทะเบียน`,
   };

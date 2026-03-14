@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI, Part } from '@google/generative-ai';
 import { config } from '../config';
-import { SlipData, VerificationResult, VillageSettings } from '../types';
+import { SlipData, VerificationResult } from '../types';
 import { findPaymentByTransactionRef } from './sheets';
 
 const genAI = new GoogleGenerativeAI(config.gemini.apiKey);
@@ -75,7 +75,10 @@ export async function extractSlipData(imageBuffer: Buffer): Promise<SlipData | n
 
 export async function verifySlip(
   slipData: SlipData,
-  settings: VillageSettings,
+  monthlyRate: number,
+  houseNumber: string,
+  bankAccountNumber: string,
+  bankName: string,
 ): Promise<VerificationResult> {
   // Check authenticity
   if (!slipData.is_authentic) {
@@ -88,17 +91,16 @@ export async function verifySlip(
   }
 
   // Check amount is a positive multiple of monthly fee
-  const monthlyFee = settings.monthly_fee_amount;
-  if (slipData.amount <= 0 || slipData.amount % monthlyFee !== 0) {
+  if (slipData.amount <= 0 || slipData.amount % monthlyRate !== 0) {
     return {
       valid: false,
       slip_data: slipData,
-      error_message: `จำนวนเงินไม่ตรงกับค่าส่วนกลาง (ค่าส่วนกลางเดือนละ ${monthlyFee} บาท, ยอดที่โอน: ${slipData.amount} บาท)`,
+      error_message: `จำนวนเงินไม่ตรงกับค่าส่วนกลาง (ค่าส่วนกลางบ้านเลขที่ ${houseNumber} เดือนละ ${monthlyRate} บาท, ยอดที่โอน: ${slipData.amount} บาท)`,
       monthCount: 0,
     };
   }
 
-  const monthCount = slipData.amount / monthlyFee;
+  const monthCount = slipData.amount / monthlyRate;
   if (monthCount > 12) {
     return {
       valid: false,
@@ -111,12 +113,12 @@ export async function verifySlip(
   // Check recipient account
   if (
     slipData.receiving_account_number &&
-    !slipData.receiving_account_number.includes(settings.bank_account_number)
+    !slipData.receiving_account_number.includes(bankAccountNumber)
   ) {
     return {
       valid: false,
       slip_data: slipData,
-      error_message: `บัญชีปลายทางไม่ถูกต้อง กรุณาโอนเงินไปยังบัญชี ${settings.bank_name} ${settings.bank_account_number}`,
+      error_message: `บัญชีปลายทางไม่ถูกต้อง กรุณาโอนเงินไปยังบัญชี ${bankName} ${bankAccountNumber}`,
       monthCount: 0,
     };
   }

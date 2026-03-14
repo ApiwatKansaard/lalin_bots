@@ -67,7 +67,8 @@ async function handleImageMessage(event: MessageEvent, userId: string): Promise<
       return;
     }
 
-    const verification = await verifySlip(slipData, settings);
+    const monthlyRate = parseFloat(house.monthly_rate) || 0;
+    const verification = await verifySlip(slipData, monthlyRate, house.house_number, settings.bank_account_number, settings.bank_name);
     if (!verification.valid) {
       await client.pushMessage({
         to: userId,
@@ -88,6 +89,7 @@ async function handleImageMessage(event: MessageEvent, userId: string): Promise<
       slip_image_url: '',
       verified_status: 'verified',
       recorded_by: 'bot',
+      discount: '0',
     };
 
     await addPaymentRecord(payment);
@@ -129,13 +131,14 @@ async function handleTextMessage(_event: MessageEvent, userId: string): Promise<
     }
 
     if (/เช็คยอด|ยอดค้าง|ค้างชำระ/.test(text)) {
-      const balance = await getOutstandingBalance(house.house_number, house.move_in_date, settings.monthly_fee_amount);
+      const balance = await getOutstandingBalance(house);
+      const monthlyRate = parseFloat(house.monthly_rate) || 0;
       const msg = buildOutstandingBalance(
         settings.village_name,
         house.house_number,
         balance.totalOwed,
         balance.unpaidMonths,
-        settings.monthly_fee_amount,
+        monthlyRate,
       );
       await client.pushMessage({ to: userId, messages: [msg as unknown as Message] });
       return;

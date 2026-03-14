@@ -1,6 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { findPaymentByTransactionRef } from '../sheets';
-import type { VillageSettings } from '../sheets';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
@@ -70,28 +69,31 @@ export async function extractSlipData(imageBuffer: Buffer): Promise<SlipData | n
 
 export async function verifySlip(
   slipData: SlipData,
-  settings: VillageSettings,
+  monthlyRate: number,
+  houseNumber: string,
+  bankAccountNumber: string,
+  bankName: string,
 ): Promise<VerificationResult> {
   if (!slipData.is_authentic) {
     return { valid: false, slip_data: slipData, error_message: 'สลิปมีความผิดปกติ กรุณาติดต่อกรรมการหมู่บ้าน' };
   }
 
-  if (slipData.amount !== settings.monthly_fee_amount) {
+  if (slipData.amount <= 0 || slipData.amount % monthlyRate !== 0) {
     return {
       valid: false,
       slip_data: slipData,
-      error_message: `จำนวนเงินไม่ตรงกับค่าส่วนกลาง (ยอดที่ต้องจ่าย: ${settings.monthly_fee_amount} บาท, ยอดที่โอน: ${slipData.amount} บาท)`,
+      error_message: `จำนวนเงินไม่ตรงกับค่าส่วนกลาง (ค่าส่วนกลางบ้านเลขที่ ${houseNumber} เดือนละ ${monthlyRate} บาท, ยอดที่โอน: ${slipData.amount} บาท)`,
     };
   }
 
   if (
     slipData.receiving_account_number &&
-    !slipData.receiving_account_number.includes(settings.bank_account_number)
+    !slipData.receiving_account_number.includes(bankAccountNumber)
   ) {
     return {
       valid: false,
       slip_data: slipData,
-      error_message: `บัญชีปลายทางไม่ถูกต้อง กรุณาโอนเงินไปยังบัญชี ${settings.bank_name} ${settings.bank_account_number}`,
+      error_message: `บัญชีปลายทางไม่ถูกต้อง กรุณาโอนเงินไปยังบัญชี ${bankName} ${bankAccountNumber}`,
     };
   }
 

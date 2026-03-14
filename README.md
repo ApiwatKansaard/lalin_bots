@@ -33,9 +33,9 @@ cp .env.example .env
 
 ### 3. Google Sheet Setup
 Create a Google Sheet with 3 sheets:
-- **payments**: `house_number, resident_name, month, year, amount, paid_date, transaction_ref, slip_image_url, verified_status, recorded_by`
-- **houses**: `house_number, resident_name, line_user_id, phone, move_in_date, is_active`
-- **settings**: `monthly_fee_amount, bank_account_number, bank_name, village_name`
+- **payments**: `house_number, resident_name, month, year, amount, paid_date, transaction_ref, slip_image_url, verified_status, recorded_by, discount`
+- **houses**: `house_number, resident_name, line_user_id, phone, move_in_date, is_active, monthly_rate, transfer_date, due_date, prior_arrears, prior_arrears_paid`
+- **settings**: `bank_account_number, bank_name, village_name`
 
 Share the sheet with the service account email.
 

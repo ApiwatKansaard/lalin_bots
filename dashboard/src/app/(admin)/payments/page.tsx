@@ -22,6 +22,7 @@ interface Payment {
   transaction_ref: string;
   verified_status: string;
   recorded_by: string;
+  discount: string;
 }
 
 export default function PaymentsPage() {

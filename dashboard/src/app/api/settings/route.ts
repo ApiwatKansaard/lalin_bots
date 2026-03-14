@@ -19,7 +19,6 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json();
   await updateSettings({
-    monthly_fee_amount: parseFloat(body.monthly_fee_amount),
     bank_account_number: body.bank_account_number,
     bank_name: body.bank_name,
     village_name: body.village_name,

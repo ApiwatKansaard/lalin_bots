@@ -30,12 +30,12 @@ async function run() {
   // Write headers + data
   await sheets.spreadsheets.values.update({
     spreadsheetId,
-    range: 'settings!A1:D2',
+    range: 'settings!A1:C2',
     valueInputOption: 'USER_ENTERED',
     requestBody: {
       values: [
-        ['monthly_fee_amount', 'bank_account_number', 'bank_name', 'village_name'],
-        [700, '198-4-74759-0', 'ธนาคารกรุงเทพ', 'LALIN TOWN LIO ลำลูกกา คล']
+        ['bank_account_number', 'bank_name', 'village_name'],
+        ['198-4-74759-0', 'ธนาคารกรุงเทพ', 'LALIN TOWN LIO ลำลูกกา คล']
       ]
     }
   });
@@ -51,10 +51,10 @@ async function run() {
     });
     await sheets.spreadsheets.values.update({
       spreadsheetId,
-      range: 'payments!A1:J1',
+      range: 'payments!A1:K1',
       valueInputOption: 'USER_ENTERED',
       requestBody: {
-        values: [['house_number', 'resident_name', 'month', 'year', 'amount', 'paid_date', 'transaction_ref', 'slip_image_url', 'verified_status', 'recorded_by']]
+        values: [['house_number', 'resident_name', 'month', 'year', 'amount', 'paid_date', 'transaction_ref', 'slip_image_url', 'verified_status', 'recorded_by', 'discount']]
       }
     });
     console.log('Created payments sheet with headers');
@@ -63,7 +63,7 @@ async function run() {
   // Verify
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: 'settings!A1:D2',
+    range: 'settings!A1:C2',
   });
   console.log('Verified settings:', JSON.stringify(res.data.values, null, 2));
 }

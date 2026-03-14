@@ -10,7 +10,11 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const houses = await getAllHouses();
-  houses.sort((a, b) => Number(a.house_number) - Number(b.house_number));
+  houses.sort((a, b) => {
+    const numA = parseFloat(a.house_number.replace(/^29\//, "")) || 0;
+    const numB = parseFloat(b.house_number.replace(/^29\//, "")) || 0;
+    return numA - numB;
+  });
   return NextResponse.json(houses);
 }
 
@@ -28,6 +32,11 @@ export async function POST(req: NextRequest) {
       phone: body.phone || "",
       move_in_date: body.move_in_date || new Date().toISOString().split("T")[0],
       is_active: "TRUE",
+      monthly_rate: body.monthly_rate || "0",
+      transfer_date: body.transfer_date || "",
+      due_date: body.due_date || "",
+      prior_arrears: body.prior_arrears || "0",
+      prior_arrears_paid: body.prior_arrears_paid || "0",
     });
     return NextResponse.json({ success: true });
   }
@@ -40,6 +49,11 @@ export async function POST(req: NextRequest) {
       phone: body.phone || "",
       move_in_date: body.move_in_date || "",
       is_active: body.is_active,
+      monthly_rate: body.monthly_rate || "0",
+      transfer_date: body.transfer_date || "",
+      due_date: body.due_date || "",
+      prior_arrears: body.prior_arrears || "0",
+      prior_arrears_paid: body.prior_arrears_paid || "0",
     });
     return NextResponse.json({ success: true });
   }

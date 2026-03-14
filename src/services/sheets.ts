@@ -14,22 +14,21 @@ const spreadsheetId = config.google.sheetsId;
 export async function getSettings(): Promise<VillageSettings> {
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: 'settings!A2:D2',
+    range: 'settings!A2:C2',
   });
   const row = res.data.values?.[0];
   if (!row) throw new Error('Settings not found in Google Sheet');
   return {
-    monthly_fee_amount: parseFloat(row[0]),
-    bank_account_number: row[1],
-    bank_name: row[2],
-    village_name: row[3],
+    bank_account_number: row[0],
+    bank_name: row[1],
+    village_name: row[2],
   };
 }
 
 export async function findHouseByLineUserId(lineUserId: string): Promise<HouseRecord | null> {
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: 'houses!A2:F',
+    range: 'houses!A2:K',
   });
   const rows = res.data.values;
   if (!rows) return null;
@@ -44,13 +43,18 @@ export async function findHouseByLineUserId(lineUserId: string): Promise<HouseRe
     phone: row[3],
     move_in_date: row[4],
     is_active: row[5],
+    monthly_rate: row[6] || '0',
+    transfer_date: row[7] || '',
+    due_date: row[8] || '',
+    prior_arrears: row[9] || '0',
+    prior_arrears_paid: row[10] || '0',
   };
 }
 
 export async function addPaymentRecord(record: PaymentRecord): Promise<void> {
   await sheets.spreadsheets.values.append({
     spreadsheetId,
-    range: 'payments!A:J',
+    range: 'payments!A:K',
     valueInputOption: 'USER_ENTERED',
     requestBody: {
       values: [[
@@ -64,6 +68,7 @@ export async function addPaymentRecord(record: PaymentRecord): Promise<void> {
         record.slip_image_url,
         record.verified_status,
         record.recorded_by,
+        record.discount,
       ]],
     },
   });
@@ -72,7 +77,7 @@ export async function addPaymentRecord(record: PaymentRecord): Promise<void> {
 export async function findPaymentByTransactionRef(ref: string): Promise<PaymentRecord | null> {
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: 'payments!A2:J',
+    range: 'payments!A2:K',
   });
   const rows = res.data.values;
   if (!rows) return null;
@@ -91,13 +96,14 @@ export async function findPaymentByTransactionRef(ref: string): Promise<PaymentR
     slip_image_url: row[7],
     verified_status: row[8],
     recorded_by: row[9],
+    discount: row[10] || '0',
   };
 }
 
 export async function getPaymentHistory(houseNumber: string): Promise<PaymentRecord[]> {
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: 'payments!A2:J',
+    range: 'payments!A2:K',
   });
   const rows = res.data.values;
   if (!rows) return [];
@@ -115,23 +121,31 @@ export async function getPaymentHistory(houseNumber: string): Promise<PaymentRec
       slip_image_url: row[7],
       verified_status: row[8],
       recorded_by: row[9],
+      discount: row[10] || '0',
     }))
     .reverse();
 }
 
 export async function getOutstandingBalance(
-  houseNumber: string,
-  moveInDate: string,
-  monthlyFee: number,
-): Promise<{ totalOwed: number; unpaidMonths: string[] }> {
-  const payments = await getPaymentHistory(houseNumber);
+  house: HouseRecord,
+): Promise<{ totalOwed: number; unpaidMonths: string[]; priorArrearsRemaining: number }> {
+  const monthlyRate = parseFloat(house.monthly_rate) || 0;
+  const priorArrears = parseFloat(house.prior_arrears) || 0;
+  const priorArrearsPaid = parseFloat(house.prior_arrears_paid) || 0;
+  const priorArrearsRemaining = Math.max(0, priorArrears - priorArrearsPaid);
+
+  const startDate = house.due_date || house.move_in_date;
+  if (!startDate) return { totalOwed: priorArrearsRemaining, unpaidMonths: [], priorArrearsRemaining };
+
+  const payments = await getPaymentHistory(house.house_number);
   const paidMonths = new Set(payments.map((p) => `${p.year}-${p.month}`));
 
-  const start = new Date(moveInDate);
+  const start = parseDateString(startDate);
   const now = new Date();
   const unpaidMonths: string[] = [];
 
-  const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+  // Start counting from the month AFTER due_date
+  const cursor = new Date(start.getFullYear(), start.getMonth() + 1, 1);
   while (cursor <= now) {
     const y = cursor.getFullYear().toString();
     const m = (cursor.getMonth() + 1).toString();
@@ -143,15 +157,26 @@ export async function getOutstandingBalance(
   }
 
   return {
-    totalOwed: unpaidMonths.length * monthlyFee,
+    totalOwed: priorArrearsRemaining + unpaidMonths.length * monthlyRate,
     unpaidMonths,
+    priorArrearsRemaining,
   };
+}
+
+function parseDateString(dateStr: string): Date {
+  // Handle DD/MM/YYYY (Thai format from CSV)
+  const ddmmyyyy = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (ddmmyyyy) {
+    return new Date(parseInt(ddmmyyyy[3]), parseInt(ddmmyyyy[2]) - 1, parseInt(ddmmyyyy[1]));
+  }
+  // Fallback to standard Date parsing (YYYY-MM-DD etc.)
+  return new Date(dateStr);
 }
 
 export async function findHouseByNumber(houseNumber: string): Promise<HouseRecord | null> {
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: 'houses!A2:F',
+    range: 'houses!A2:K',
   });
   const rows = res.data.values;
   if (!rows) return null;
@@ -166,13 +191,18 @@ export async function findHouseByNumber(houseNumber: string): Promise<HouseRecor
     phone: row[3] || '',
     move_in_date: row[4] || '',
     is_active: row[5] || 'TRUE',
+    monthly_rate: row[6] || '0',
+    transfer_date: row[7] || '',
+    due_date: row[8] || '',
+    prior_arrears: row[9] || '0',
+    prior_arrears_paid: row[10] || '0',
   };
 }
 
 export async function updateHouseLineUserId(houseNumber: string, lineUserId: string): Promise<void> {
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: 'houses!A2:F',
+    range: 'houses!A2:K',
   });
   const rows = res.data.values;
   if (!rows) throw new Error('Houses sheet is empty');
@@ -199,7 +229,7 @@ export async function findPaymentByHouseMonthYear(
 ): Promise<PaymentRecord | null> {
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: 'payments!A2:J',
+    range: 'payments!A2:K',
   });
   const rows = res.data.values;
   if (!rows) return null;
@@ -218,13 +248,14 @@ export async function findPaymentByHouseMonthYear(
     slip_image_url: row[7],
     verified_status: row[8],
     recorded_by: row[9],
+    discount: row[10] || '0',
   };
 }
 
 export async function getAllRegisteredLineUserIds(): Promise<string[]> {
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: 'houses!A2:F',
+    range: 'houses!A2:K',
   });
   const rows = res.data.values;
   if (!rows) return [];
@@ -235,17 +266,20 @@ export async function getAllRegisteredLineUserIds(): Promise<string[]> {
 }
 
 export async function getUnpaidMonths(
-  houseNumber: string,
-  moveInDate: string,
+  house: HouseRecord,
 ): Promise<{ month: string; year: string }[]> {
-  const payments = await getPaymentHistory(houseNumber);
+  const startDate = house.due_date || house.move_in_date;
+  if (!startDate) return [];
+
+  const payments = await getPaymentHistory(house.house_number);
   const paidMonths = new Set(payments.filter(p => p.verified_status === 'verified').map((p) => `${p.year}-${p.month}`));
 
-  const start = new Date(moveInDate);
+  const start = parseDateString(startDate);
   const now = new Date();
   const unpaid: { month: string; year: string }[] = [];
 
-  const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+  // Start counting from the month AFTER due_date
+  const cursor = new Date(start.getFullYear(), start.getMonth() + 1, 1);
   while (cursor <= now) {
     const y = cursor.getFullYear().toString();
     const m = (cursor.getMonth() + 1).toString();

@@ -9,6 +9,7 @@ export interface PaymentRecord {
   slip_image_url: string;
   verified_status: string;
   recorded_by: string;
+  discount: string;
 }
 
 export interface HouseRecord {
@@ -18,10 +19,14 @@ export interface HouseRecord {
   phone: string;
   move_in_date: string;
   is_active: string;
+  monthly_rate: string;
+  transfer_date: string;
+  due_date: string;
+  prior_arrears: string;
+  prior_arrears_paid: string;
 }
 
 export interface VillageSettings {
-  monthly_fee_amount: number;
   bank_account_number: string;
   bank_name: string;
   village_name: string;

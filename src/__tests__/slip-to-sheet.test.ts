@@ -86,9 +86,13 @@ describe('Happy Case: User sends slip → payment recorded in Google Sheet', () 
     phone: '0812345678',
     move_in_date: '2020-01-01',
     is_active: 'TRUE',
+    monthly_rate: '700',
+    transfer_date: '',
+    due_date: '2020-01-01',
+    prior_arrears: '0',
+    prior_arrears_paid: '0',
   };
   const TEST_SETTINGS = {
-    monthly_fee_amount: 700,
     bank_account_number: '1234567890',
     bank_name: 'กสิกรไทย',
     village_name: 'LALIN TOWN LIO',
@@ -168,7 +172,7 @@ describe('Happy Case: User sends slip → payment recorded in Google Sheet', () 
 
   test('should verify slip against settings', async () => {
     await handleWebhook(createImageEvent());
-    expect(mockVerifySlip).toHaveBeenCalledWith(TEST_SLIP_DATA, TEST_SETTINGS);
+    expect(mockVerifySlip).toHaveBeenCalledWith(TEST_SLIP_DATA, 700, '42', '1234567890', 'กสิกรไทย');
   });
 
   test('should record payment to Google Sheet with correct data', async () => {
@@ -186,6 +190,7 @@ describe('Happy Case: User sends slip → payment recorded in Google Sheet', () 
       slip_image_url: '',
       verified_status: 'verified',
       recorded_by: 'bot',
+      discount: '0',
     });
   });
 

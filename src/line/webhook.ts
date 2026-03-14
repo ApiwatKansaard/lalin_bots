@@ -107,7 +107,7 @@ async function handleRegistration(userId: string, text: string): Promise<void> {
     return;
   }
 
-  const houseNumber = text.trim();
+  const houseNumber = text.trim().startsWith('29/') ? text.trim() : `29/${text.trim()}`;
   const house = await findHouseByNumber(houseNumber);
 
   if (!house) {
@@ -179,7 +179,8 @@ async function handleImageMessage(event: MessageEvent, userId: string): Promise<
       return;
     }
 
-    const verification = await verifySlip(slipData, settings);
+    const monthlyRate = parseFloat(house.monthly_rate) || 0;
+    const verification = await verifySlip(slipData, monthlyRate, house.house_number, settings.bank_account_number, settings.bank_name);
     if (!verification.valid) {
       await client.pushMessage({
         to: userId,
@@ -191,7 +192,7 @@ async function handleImageMessage(event: MessageEvent, userId: string): Promise<
     const monthCount = verification.monthCount;
 
     // Get unpaid months and assign payments
-    const unpaidMonths = await getUnpaidMonths(house.house_number, house.move_in_date);
+    const unpaidMonths = await getUnpaidMonths(house);
 
     if (unpaidMonths.length === 0) {
       await client.pushMessage({
@@ -215,7 +216,7 @@ async function handleImageMessage(event: MessageEvent, userId: string): Promise<
       }
     }
 
-    const amountPerMonth = settings.monthly_fee_amount.toString();
+    const amountPerMonth = monthlyRate.toString();
     const payments = [];
 
     for (const m of monthsToRecord) {
@@ -230,6 +231,7 @@ async function handleImageMessage(event: MessageEvent, userId: string): Promise<
         slip_image_url: '',
         verified_status: 'verified',
         recorded_by: 'bot',
+        discount: '0',
       };
       await addPaymentRecord(payment);
       payments.push(payment);
@@ -298,9 +300,10 @@ async function handleTextMessage(event: MessageEvent, userId: string): Promise<v
 
     // "วิธีใช้งาน" doesn't need house lookup — respond immediately
     if (/วิธีใช้งาน|ช่วยเหลือ|help/.test(text)) {
+      const houseForHelp = await findHouseByLineUserId(userId);
       await client.pushMessage({
         to: userId,
-        messages: [buildHelpMessage()],
+        messages: [buildHelpMessage(houseForHelp || undefined)],
       });
       return;
     }
@@ -317,13 +320,15 @@ async function handleTextMessage(event: MessageEvent, userId: string): Promise<v
 
     if (/เช็คยอด|ยอดค้าง|ค้างชำระ/.test(text)) {
       const settings = await getSettings();
-      const balance = await getOutstandingBalance(house.house_number, house.move_in_date, settings.monthly_fee_amount);
+      const monthlyRate = parseFloat(house.monthly_rate) || 0;
+      const balance = await getOutstandingBalance(house);
       const msg = buildOutstandingBalance(
         settings.village_name,
         house.house_number,
         balance.totalOwed,
         balance.unpaidMonths,
-        settings.monthly_fee_amount,
+        monthlyRate,
+        balance.priorArrearsRemaining,
       );
       await client.pushMessage({ to: userId, messages: [msg as unknown as Message] });
       return;

@@ -31,6 +31,7 @@ export async function POST(req: NextRequest) {
       slip_image_url: "",
       verified_status: "verified",
       recorded_by: session.user.email,
+      discount: body.discount || "0",
     });
     return NextResponse.json({ success: true });
   }
